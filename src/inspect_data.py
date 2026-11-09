@@ -42,7 +42,17 @@ while i < len(df_orig):
         for col_idx in range(1, len(df_orig.columns)):
             cargo = df_orig.iloc[i, col_idx]
             if pd.notna(cargo) and str(cargo).strip().upper() != "ENCARGO":
-                cargos_bloco[col_idx] = str(cargo).strip()
+                cargo_nome = str(cargo).strip()
+                # Corrige typo AMD → ADM
+                if cargo_nome.upper() == "AMD":
+                    cargo_nome = "ADM"
+                # Converte identificadores numéricos (1, 2, 3...) para nome descritivo
+                try:
+                    num = int(float(cargo_nome))
+                    cargo_nome = f"FUNCIONÁRIO {num}"
+                except (ValueError, TypeError):
+                    pass
+                cargos_bloco[col_idx] = cargo_nome
         
         # Processa as próximas linhas de custos deste bloco até o próximo cabeçalho
         dados_cargos = {c: {k: 0.0 for k in colunas_custos} for c in cargos_bloco.values()}
@@ -90,10 +100,11 @@ df_estruturado_ml = pd.DataFrame(registros_ml)
 # Substitui possíveis NaNs restantes por 0
 df_estruturado_ml.fillna(0, inplace=True)
 
-# Remove registros onde todos os custos são zero (linhas vazias do Excel)
-df_estruturado_ml = df_estruturado_ml[
-    df_estruturado_ml[colunas_custos].sum(axis=1) > 0
-]
+# Remove registros onde todos os custos são zero E o cargo não é um funcionário numerado
+# (linhas completamente vazias do Excel, não funcionários com custos zero)
+mask_custos_zero = df_estruturado_ml[colunas_custos].sum(axis=1) == 0
+mask_cargo_vazio = ~df_estruturado_ml['Cargo'].str.startswith('FUNCIONÁRIO')
+df_estruturado_ml = df_estruturado_ml[~(mask_custos_zero & mask_cargo_vazio)]
 
 # Salva em formato CSV
 output_dir = BASE_DIR / 'data' / 'processed'

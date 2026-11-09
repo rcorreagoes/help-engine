@@ -1,0 +1,12 @@
+name: help-engine
+
+services:
+  help-engine:
+    image: help-engine:latest
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: help-engine
+    ports:
+      - "8002:8002"
+    restart: unless-stopped
